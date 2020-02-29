@@ -1,0 +1,493 @@
+---
+title: "analysis"
+author: "Phani Sai Kamal Lingam"
+date: "11/21/2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Preparation
+
+### 1. Introduction
+
+#### Question of Interest: How the Payment Preferences for tickets in Buses impacts Boarding Time of the Passengers?
+
+#### Quantitative Variable (Continous): Boarding Duration in Seconds (The time from first step in the bus till the ticket is issued)
+
+#### Categorical Variable (Nominal): Mode of Payment, Cash (Coins and Notes) and Pass (Card, Transfer Pass, Application)
+
+#### Analysis Method: Difference in Means
+
+#### Statistical Test: Welch Two Sample T-test
+
+#### Additional Varibles:
+
+##### Ethnicity: Four Level Factor (Categorical; Nominal)
+
+###### W - Whites
+###### HL - Hispanic/Latinos
+###### AA - African Americans
+###### A - Asians and Others
+
+##### Gender: Two Level Factor (Categorical; Nominal)
+
+###### M - Male
+###### F - Female
+
+##### AgeGroup: Four Level Facotr (Categorical; Ordinal)
+
+###### Y - Youth (0 - 17)
+###### A - Adults (18 - 34)
+###### M - Middle Aged (35 - 54)
+###### S - Seniors (55+)
+
+##### Employment: Two Level Factor (Categorical; Nominal)
+
+###### E - Employed
+###### U - Unemployed
+
+#### Population Data Points: 150 (Cash - 42, Pass - 108 )
+
+#### Sample Data Points: 80 (Cash - 40, Pass - 40; n > 30)
+
+#### Collection Methodology: Random Buses and Random Routes are chosen on random days to minimize bias. Data Points are collected at few random stops instead of all stops throughout the routes or of a particular bus to prevent Sampling Bias and Selection Bias. Some nuances araised due to the missing data points in crowded buses and high density stops. 
+
+#### Inference Population: Bus Commuters in the City of Seattle
+
+#### Inference Parameter: Mean of Boarding Time of Passenger
+
+#### Explanatory Variable: Mode of Payment
+
+#### Respone Variable: Boarding Duration
+
+#### Population Variance: Unknown
+
+```{r}
+# intalling packages
+install.packages("ggplot2")
+install.packages("dplyr")
+```
+
+```{r}
+# importing libraries
+library("ggplot2")
+library("dplyr")
+```
+
+### 2. Sampling Data
+
+```{r}
+# importing data from CSV to a Dataframe
+myData <- read.csv(file = "dataset.csv")
+head(myData)
+```
+
+```{r}
+# Entire collected data
+myData
+```
+
+```{r}
+# Dataset Summary
+summary(myData)
+```
+
+#### In order to do statistical analysis we chose 40 data point from each category to come up with a reliable conclusion. In the Population data the "Pass Category" is dominating the "Cash Category" as it is the most preferred method of payment for tickets in real life because of it's tap and go approach instead of inserting the exact amount of cash into the machine and wait for the ticket. In our Sample data we took 40 data points of each category to reduce the impact of dominance of category on the other and thereby preventing the possible Sample Bias.
+
+```{r}
+# Choosing a random seed number to introduce randomization in sampling process.
+set.seed(7384)
+```
+
+```{r}
+# Sample data of 40 passengers using Cash for ticket payment (40 out of 42 data points).
+cashData <- filter(myData, myData$ModeOfPayment == 'C')
+cashDataSample <- cashData[sample(nrow(cashData), 40), ]
+cashDataSample
+```
+
+```{r}
+# Cash Data Statistics
+summary(cashDataSample)
+```
+
+```{r}
+# Choosing a random seed number to introduce randomization in sampling process. 
+set.seed(4250)
+```
+
+```{r}
+# Sample data of 40 passengers using Pass for ticket payment (40 out of 108 data points).
+passData <- filter(myData, myData$ModeOfPayment == 'P')
+passDataSample <- passData[sample(nrow(passData), 40), ]
+passDataSample
+```
+
+```{r}
+# Pass Data Statistics
+summary(passDataSample)
+```
+
+```{r}
+# Sampled Data chosen for Statistical Analysis.
+sampleData <- rbind(cashDataSample, passDataSample)
+head(sampleData)
+```
+
+```{r}
+# Sampled Data
+sampleData
+```
+
+```{r}
+# Sample Data Summary
+summary(sampleData)
+```
+
+## Exploratory Analysis
+
+```{r}
+# graphs of all pairs of variables
+pairs(sampleData)
+```
+
+```{r}
+ggplot(sampleData,aes(x=BoardingDuration,y=Gender,color=ModeOfPayment))+geom_point()+ylab('Gender')+xlab('Boarding Duration')+ ggtitle('Mode of Payment')
+```
+
+```{r}
+# Box plot for Mode of Payment vs Boarding Duration
+ggplot(sampleData, aes(x = ModeOfPayment, y = BoardingDuration)) + geom_boxplot() + coord_flip()
+
+```
+
+##### Boxplot depicting the effect of mode of payment preference on Boarding Duration
+
+```{r}
+# histogram with fill color
+ggplot(sampleData, aes(x=BoardingDuration))+
+  geom_histogram(color="darkblue", fill="lightblue")
+# dashed line
+ggplot(sampleData, aes(x=BoardingDuration))+
+  geom_histogram(color="black", fill="lightblue",
+                 linetype="dashed")
+```
+
+```{r}
+# histogram plot by groups
+ggplot(sampleData, aes(x=BoardingDuration, color=ModeOfPayment)) +
+  geom_histogram(fill="White")
+# Overlaid histograms
+ggplot(sampleData, aes(x=BoardingDuration, color=ModeOfPayment)) +
+  geom_histogram(fill="White", alpha=0.5, position="identity")
+```
+
+##### Histogram depicting the distribution of Data points based upon each category type.
+
+```{r}
+# Boarding Duration vs Mode of Payment
+ggplot(sampleData, aes(x=BoardingDuration))+
+  geom_histogram(color="black", fill="white")+
+  facet_grid(ModeOfPayment ~ .)
+```
+
+##### Histogram depicting the effect of Mode of Payment on Boarding Duration
+
+```{r}
+# Boarding Duration vs Age Groups
+ggplot(sampleData, aes(x=BoardingDuration))+
+  geom_histogram(color="black", fill="white")+
+  facet_grid(AgeGroup ~ .)
+```
+
+##### Histogram depicting the effect of Age Group on Boarding Duration
+
+```{r}
+# Boarding Duration vs Gender
+ggplot(sampleData, aes(x=BoardingDuration))+
+  geom_histogram(color="black", fill="white")+
+  facet_grid(Gender ~ .)
+```
+
+##### Histogram depicting the effect of Gender on Boarding Duration
+
+```{r}
+# Boarding Duration vs Employment
+ggplot(sampleData, aes(x=BoardingDuration))+
+  geom_histogram(color="black", fill="white")+
+  facet_grid(Employment ~ .)
+```
+
+##### Histogram depicting the effect of Employment status on Boarding Duration
+
+```{r}
+# Boarding Duration vs Ethnicity
+ggplot(sampleData, aes(x=BoardingDuration))+
+  geom_histogram(color="black", fill="white")+
+  facet_grid(Ethnicity ~ .)
+```
+
+```{r}
+# Mode of Payment vs Gender
+ggplot(sampleData, aes(ModeOfPayment, ..count..)) + geom_bar(aes(fill = Gender), position = "dodge")
+```
+
+##### Bar Graph depicting the preference of Both the gender for mode of payment
+
+```{r}
+# Mode of Payment vs Employment
+ggplot(sampleData, aes(ModeOfPayment, ..count..)) + geom_bar(aes(fill = Employment), position = "dodge")
+```
+
+##### Bar Graph depicting the preference of sectors for mode of payment
+
+```{r}
+# Mode of Payment vs Ethnicity
+ggplot(sampleData, aes(ModeOfPayment, ..count..)) + geom_bar(aes(fill = Ethnicity), position = "dodge")
+```
+
+##### Bar Graph depicting the preference of individuals from different ethnical background for mode of payment
+
+```{r}
+# Mode of Payment vs Age Group
+ggplot(sampleData, aes(ModeOfPayment, ..count..)) + geom_bar(aes(fill = AgeGroup), position = "dodge")
+```
+
+##### Bar Graph depicting the preference of age groups for mode of payment
+
+## Statistical Analysis
+
+### 1. Visualizing Sample Data
+
+#### A Normal Q-Q Plot helps us to visualize whether our sample data is normally distributed or not. In real word scenarios no dataset is perfectly normally distribution. In a perfect Normal Distribution the Q-Q Plot just represent the $Y = X$ Line. In real-life the line would be slightly curved over some data points.
+
+```{r}
+# Q-Q Plot of Sample Data
+qqnorm(sampleData$BoardingDuration)
+qqline(sampleData$BoardingDuration)
+```
+
+```{r}
+# Q-Q Plot of Passengers using Cash in the Sample Data
+qqnorm(sampleData$BoardingDuration[sampleData$ModeOfPayment == "C"])
+qqline(sampleData$BoardingDuration[sampleData$ModeOfPayment == "C"])
+```
+
+```{r}
+# Q-Q Plot of Passengers using Pass in the Sample Data
+qqnorm(sampleData$BoardingDuration[sampleData$ModeOfPayment == "P"])
+qqline(sampleData$BoardingDuration[sampleData$ModeOfPayment == "P"])
+```
+
+
+#### The above graphs may not be perfectly normally distributed but it can be said that they are close to that of a normal distribution with slight curves.
+
+### 2. Statistical Testing
+
+#### Hypothesis:
+
+##### Null Hypothesis: The true population mean Boarding Duration of Commuters using Cash is equal to the true population mean Boarding Duartion for those who use Pass.
+
+$$ H_0: \mu_c - \mu_p = 0\ or\ \mu_c = \mu_p $$
+
+##### Alternate Hypothesis: 
+
+##### A1. The true population mean Boarding Duration of Commuters using Cash is not equal to (or different than that of) the true population mean Boarding Duartion for those who use Pass.
+
+$$ H_{A1}: \mu_c - \mu_p \ne 0\ or\ \mu_c \ne \mu_p$$
+
+##### A2. The true population mean Boarding Duration of Commuters using Cash is greater than that of the true population mean Boarding Duartion for those who use Pass.
+
+$$ H_{A2}: \mu_c - \mu_p > 0\ or\ \mu_c > \mu_p$$
+
+#### Sample Statistic: Difference in Means
+
+$$ \overline{x}_c - \overline{x}_p$$
+
+#### Test-statistic 
+
+$$ t = \frac{(\overline{x}_c - \overline{x}_p) - (\mu_c - \mu_p)}{\sqrt{\frac{\sigma^2_c}{n_c} + {\frac{\sigma^2_p}{n_p}}}} $$
+
+$$ \mu_0 = \mu_c - \mu_p = 0 \\ $$
+
+##### Two Sample t-test
+
+###### Calculating p-value using R in-built function t.test()
+
+```{r}
+# Two sided t-test
+t.test(sampleData$BoardingDuration~sampleData$ModeOfPayment)
+```
+
+###### Calculating p-value manually using given formulas.
+
+```{r}
+# Mean Boarding Time of Passengers using Cash
+mu_c <- mean(sampleData$BoardingDuration[sampleData$ModeOfPayment == 'C'])
+mu_c
+```
+
+```{r}
+# Mean Boarding Time of Passengers using Pass
+mu_p <- mean(sampleData$BoardingDuration[sampleData$ModeOfPayment == 'P'])
+mu_p
+```
+
+```{r}
+# Null Hypothesis
+mu_0 <- 0
+```
+
+```{r}
+# Variance of Boarding Time of Passengers using Cash
+var_c <- var(sampleData$BoardingDuration[sampleData$ModeOfPayment == 'C'])
+var_c
+```
+
+```{r}
+# Variance of Boarding Time of Passengers using Pass
+var_p <- var(sampleData$BoardingDuration[sampleData$ModeOfPayment == 'P'])
+var_p
+```
+
+```{r}
+# Sample Size of Passengers using Cash
+n_c <- length(sampleData$BoardingDuration[sampleData$ModeOfPayment == 'C'])
+```
+
+```{r}
+# Sample Size of Passengers using Pass
+n_p <- length(sampleData$BoardingDuration[sampleData$ModeOfPayment == 'P'])
+```
+
+```{r}
+# t-value (test statistic)
+t <- (mu_c - mu_p - mu_0)/sqrt(var_c/n_c + var_p/n_p)
+t
+```
+
+```{r}
+# p-value for 2 sided t-test
+p_value <- pt(q = t, df = min(n_c, n_p) - 1, lower.tail = FALSE)*2
+p_value
+```
+
+
+
+```{r}
+# Lower Boundary of Confidence Interval
+lowerBound <- mu_c - mu_p + qt(0.05, min(n_c, n_p) - 1)*sqrt(var_c/n_c + var_p/n_p)
+lowerBound
+```
+
+```{r}
+# Upper Boundary of Confidence Interval
+upperBound <- mu_c - mu_p + qt(0.95, min(n_c, n_p) - 1)*sqrt(var_c/n_c + var_p/n_p)
+upperBound
+```
+
+```{r}
+# Sample Statistic
+ss <- mu_c - mu_p
+ss
+```
+
+#### P-value for Alternate Hypothesis 2
+
+##### One-sided t-test (Upper t-test)
+
+```{r}
+# Upper t-test
+t.test(sampleData$BoardingDuration[sampleData$ModeOfPayment == 'C'], sampleData$BoardingDuration[sampleData$ModeOfPayment == 'P'], alternative = "greater")
+```
+
+### 3. Results
+
+#### Interpretation
+
+##### Since the p-value is 0.01912974 which is less than 0.05, there is strong evidence for us to suggest that true population mean Boarding Duration of Commuters using Cash is different from the true population mean Boarding Duration for those who use Pass (i.e, true difference in means is not equal to 0). We reject the Null Hypothesis that the mean Boarding Duration of Commuters using Cash and Pass is the same at the alpha = 0.05 level. We can say that the true difference in mean Boarding Duration between those using Cash and those using Pass is between 0.4199606 and 2.283039 with a confidence of 95%. The null hypothesized difference between the mean Boarding Duration is zero is not in the 95% confidence interval which is consistent with the rejection of the null hypothesis and the values of the confidence interval suggest that on average those using Cash for purchasing tickets in Bus have a greater Boarding Duration than those of using Pass for purchasing tickets in Bus.
+
+
+```{r}
+# Scatterplot of Data points representing Random Sampling and Randomness in data.
+plot(sampleData$BoardingDuration)
+```
+
+##### This graph shows the randomness in the sample data and proves that methodology to be Simple Random Sampling.
+
+```{r}
+# Histogram of Sampling Distribution
+mu <- mean(sampleData$BoardingDuration)
+sd <- sd(sampleData$BoardingDuration)
+h <- hist(sampleData$BoardingDuration, xlim = c(0,12))
+lb <- mu - 1.96*sd
+ub <- mu + 1.96*sd
+abline(v = c(mu, lb, ub), lty = 2)
+xx <- seq(min(sampleData$BoardingDuration),max(sampleData$BoardingDuration),length=80)
+yy <- dnorm(xx, mu, sd)*length(xx)
+lines(xx, yy, col = "blue")
+```
+
+```{r}
+# Boarding Time Intervals for Both Categories
+plot(sampleData$BoardingDuration~sampleData$ModeOfPayment)
+```
+
+##### This shows that the mean of Boarding Time of those using Cash is greater than (not equal to) the Boarding Time of those using Pass
+
+```{r}
+# test statistic graph
+n <- min(n_c, n_p)
+tempX <- seq(-4, 4, .01)
+tempY <- dt(tempX, n-1)
+plot(tempX, tempY, type = 'l')
+abline(v = c(t, -t),  col = "yellow")
+abline(v = 0, col = "black")
+```
+
+```{r}
+# Confidence Intervals graph
+plot(tempX, tempY, type = 'l')
+abline(v = qnorm(0.975), col = "red")
+abline(v = qnorm(0.025), col = "red")
+abline(v = 0, col = "black")
+```
+
+##### This graph interprets the confidence interval. The area under the curve between the red lines is our 95% confidence interval. These intervals are symmetric over the line X = 0.
+
+```{r}
+plot(tempX, tempY, type = 'l')
+abline(v = qnorm(0.975), col = "red")
+abline(v = qnorm(0.025), col = "red")
+abline(v = 0, col = "black")
+abline(v = c(t, -t),  col = "yellow")
+```
+
+```{r}
+# confidence interval shading
+# plot(tempX, tempY, type = 'l')
+# polygon(c(-1.96, tempX, 1.96), c(0, tempY, 0), col="red")
+```
+
+```{r}
+# T-distribution vs Normal distribution
+plot(tempX, tempY, type = 'l')
+lines(tempX, dnorm(tempX), col = "red")
+```
+
+##### This graphs shows the deviation of our T-Distribution data from that of a Normal Distribution (which is the red line).
+
+### 4. Appendix
+
+```{r ref.label=knitr::all_labels(), echo = T, eval = F}
+```
+
+```{r}
+sampleData
+```
+
